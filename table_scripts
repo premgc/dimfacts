@@ -1,0 +1,161 @@
+/****** Object:  Table [audit_mig].[adf_datapipeline_config]    Script Date: 21/08/2023 16:00:19 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [audit_mig].[adf_datapipeline_config](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[SourceSchema] [nvarchar](max) NULL,
+	[SourceTable] [nvarchar](max) NULL,
+	[SourceUserDefinesql] [nvarchar](max) NULL,
+	[SourceSecretKey] [nvarchar](max) NULL,
+	[DestinationSchema] [nvarchar](max) NULL,
+	[DestinationTable] [nvarchar](max) NULL,
+	[DestinationSecretKey] [nvarchar](max) NULL,
+	[StoredProcName] [nvarchar](max) NULL,
+	[StorageContainter] [nvarchar](max) NULL,
+	[StorageFilePath] [nvarchar](max) NULL,
+	[StorageFileName] [nvarchar](max) NULL,
+	[Active_Flag] [nvarchar](max) NULL,
+	[Archival_Flag] [nvarchar](max) NULL,
+	[obfuscate_Flag] [nvarchar](max) NULL,
+	[Source_Flag] [nvarchar](max) NULL,
+	[GroupID] [int] NULL,
+	[OrderID] [int] NULL,
+	[IncrementalRefKey] [nvarchar](max) NULL,
+	[LoadType] [nvarchar](max) NULL,
+	[SiteCode] [varchar](10) NULL,
+ CONSTRAINT [PK_adf_datapipeline_config] PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+/****** Object:  Table [audit_mig].[AdfPipelineExecutionLog]    Script Date: 21/08/2023 16:01:23 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [audit_mig].[AdfPipelineExecutionLog](
+	[LogId] [int] IDENTITY(1,1) NOT NULL,
+	[AdfPipelineRunId] [nvarchar](100) NULL,
+	[Batch_ID] [int] NULL,
+	[ProcessId] [int] NOT NULL,
+	[DataFactoryName] [nvarchar](200) NULL,
+	[PipelineName] [nvarchar](200) NULL,
+	[SourceTable] [nvarchar](200) NULL,
+	[DestinationTable] [nvarchar](200) NULL,
+	[LoadType] [nvarchar](10) NULL,
+	[StartDateTime] [datetime2](0) NULL,
+	[PipelineStatus] [nvarchar](200) NULL,
+	[EndDateTime] [datetime] NULL,
+	[CreatedDatetime] [datetime2](0) NULL,
+	[ModifiedDatetime] [datetime2](0) NULL,
+ CONSTRAINT [PK_ExecutionLog] PRIMARY KEY CLUSTERED 
+(
+	[LogId] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [audit_mig].[AdfPipelineExecutionLog] ADD  CONSTRAINT [AdfPipelineExecLog_createDT]  DEFAULT (getdate()) FOR [CreatedDatetime]
+GO
+
+ALTER TABLE [audit_mig].[AdfPipelineExecutionLog] ADD  CONSTRAINT [AdfPipelineExecLog_ModfdDT]  DEFAULT (getdate()) FOR [ModifiedDatetime]
+GO
+
+/****** Object:  Table [audit_mig].[Batch]    Script Date: 21/08/2023 16:01:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [audit_mig].[Batch](
+	[Batch_ID] [int] NOT NULL,
+	[Process_ID] [int] NOT NULL,
+	[Process_Name] [varchar](50) NULL,
+	[Process_Start_DateTime] [datetime] NULL,
+	[Process_End_DateTime] [datetime] NULL,
+	[Process_Status] [varchar](40) NULL,
+	[Batch_Start_DateTime] [datetime] NULL,
+	[Batch_End_DateTime] [datetime] NULL,
+	[Batch_Status] [varchar](50) NULL,
+ CONSTRAINT [PK_BatchIDProcessID] PRIMARY KEY CLUSTERED 
+(
+	[Batch_ID] ASC,
+	[Process_ID] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+/****** Object:  Table [audit_mig].[DataIngestionProcessDetails]    Script Date: 21/08/2023 16:02:11 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [audit_mig].[DataIngestionProcessDetails](
+	[ProcessID] [int] NOT NULL,
+	[ProcessSchemaName] [varchar](50) NULL,
+	[ProcessName] [varchar](150) NULL,
+	[ProcessShortDesc] [varchar](50) NULL,
+	[ProcessDescription] [varchar](100) NULL,
+	[Frequency] [varchar](20) NULL,
+	[Pipeline] [varchar](50) NULL,
+	[ActiveFlag] [bit] NULL,
+	[CreatedDateTime] [datetime] NOT NULL,
+	[ModifiedDateTime] [datetime] NOT NULL,
+	[SiteCode] [varchar](10) NULL,
+ CONSTRAINT [PK_DataIngestionProcessDetails] PRIMARY KEY CLUSTERED 
+(
+	[ProcessID] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [audit_mig].[DataIngestionProcessDetails] ADD  CONSTRAINT [DataIngestProcDtls_createDT]  DEFAULT (getdate()) FOR [CreatedDateTime]
+GO
+
+ALTER TABLE [audit_mig].[DataIngestionProcessDetails] ADD  CONSTRAINT [DataIngestProcDtls_ModfdDT]  DEFAULT (getdate()) FOR [ModifiedDateTime]
+GO
+
+
+
+/****** Object:  Table [audit_mig].[watermark_lastrunmetadata]    Script Date: 21/08/2023 16:02:33 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [audit_mig].[watermark_lastrunmetadata](
+	[Key] [varchar](100) NOT NULL,
+	[value] [varchar](100) NULL,
+	[procname] [varchar](100) NULL,
+	[subprocname] [varchar](100) NULL,
+	[operator] [varchar](100) NULL,
+	[srctablename] [varchar](100) NULL,
+	[filtercolname] [varchar](100) NULL,
+	[landingtablename] [varchar](100) NULL,
+	[clausestmt] [varchar](100) NULL,
+	[orderby] [int] NULL,
+	[createdatetimestamp] [datetime2](0) NULL,
+	[lastmodifieddatetimestamp] [datetime2](0) NULL
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [audit_mig].[watermark_lastrunmetadata] ADD  CONSTRAINT [wmark_lastrunmdata_CreateDT]  DEFAULT (getdate()) FOR [createdatetimestamp]
+GO
+
+
+
+
+
+
