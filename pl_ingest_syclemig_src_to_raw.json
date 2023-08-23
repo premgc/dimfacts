@@ -1,0 +1,418 @@
+{
+    "name": "pl_ingest_syclemig_src_to_raw",
+    "properties": {
+        "description": "pl_ingest_syclemig_src_to_raw",
+        "activities": [
+            {
+                "name": "CNFG_SRC_TO_RAW",
+                "description": "Select the active records from config view to process source to raw  data ingestion for the given site code as parameter ( Uk / XC/ ROI )",
+                "type": "Lookup",
+                "dependsOn": [
+                    {
+                        "activity": "Generate Log",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "AzureSqlSource",
+                        "sqlReaderStoredProcedureName": "[audit_mig].[spSourceToRaw]",
+                        "storedProcedureParameters": {
+                            "env": {
+                                "type": "String",
+                                "value": {
+                                    "value": "@pipeline().parameters.env",
+                                    "type": "Expression"
+                                }
+                            },
+                            "results": {
+                                "type": "String",
+                                "value": {
+                                    "value": "null",
+                                    "type": "Expression"
+                                }
+                            },
+                            "sitecode": {
+                                "type": "String",
+                                "value": {
+                                    "value": "@pipeline().parameters.SiteCode",
+                                    "type": "Expression"
+                                }
+                            }
+                        },
+                        "queryTimeout": "02:00:00",
+                        "partitionOption": "None"
+                    },
+                    "dataset": {
+                        "referenceName": "ds_asql_gen_sycle_dm_config",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "p_schname": "audit_mig",
+                            "p_tblname": "adf-datapipeline-config"
+                        }
+                    },
+                    "firstRowOnly": false
+                }
+            },
+            {
+                "name": "cp_sycletable_Loop",
+                "description": "sample_tables_migration",
+                "type": "ForEach",
+                "dependsOn": [
+                    {
+                        "activity": "CNFG_SRC_TO_RAW",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@activity('CNFG_SRC_TO_RAW').output.value",
+                        "type": "Expression"
+                    },
+                    "isSequential": false,
+                    "batchCount": 4,
+                    "activities": [
+                        {
+                            "name": "cpy_sycletable_to_parquet",
+                            "type": "Copy",
+                            "dependsOn": [
+                                {
+                                    "activity": "Running_UpdateLog",
+                                    "dependencyConditions": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            ],
+                            "policy": {
+                                "timeout": "7.00:00:00",
+                                "retry": 5,
+                                "retryIntervalInSeconds": 36,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "source": {
+                                    "type": "MySqlSource",
+                                    "query": {
+                                        "value": "@item().SourceUserDefineSQL",
+                                        "type": "Expression"
+                                    }
+                                },
+                                "sink": {
+                                    "type": "ParquetSink",
+                                    "storeSettings": {
+                                        "type": "AzureBlobFSWriteSettings"
+                                    },
+                                    "formatSettings": {
+                                        "type": "ParquetWriteSettings"
+                                    }
+                                },
+                                "enableStaging": false,
+                                "parallelCopies": 10,
+                                "enableSkipIncompatibleRow": false,
+                                "translator": {
+                                    "type": "TabularTranslator",
+                                    "typeConversion": true,
+                                    "typeConversionSettings": {
+                                        "allowDataTruncation": true,
+                                        "treatBooleanAsNumber": false
+                                    }
+                                }
+                            },
+                            "inputs": [
+                                {
+                                    "referenceName": "ds_mysql_gen_sycle_dm_extract",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "tblname": {
+                                            "value": "@concat(item().SourceSchema , '.', item().SourceTable)",
+                                            "type": "Expression"
+                                        },
+                                        "secret_key": {
+                                            "value": "@item().SourceSecretKey",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                }
+                            ],
+                            "outputs": [
+                                {
+                                    "referenceName": "ds_parq_datalake_sycle_dm",
+                                    "type": "DatasetReference",
+                                    "parameters": {
+                                        "container": {
+                                            "value": "@item().StorageContainter",
+                                            "type": "Expression"
+                                        },
+                                        "filepath": {
+                                            "value": "@concat(item().StorageFilePath , '/', item().SourceTable)",
+                                            "type": "Expression"
+                                        },
+                                        "filename": {
+                                            "value": "@concat(item().SourceTable , '.', 'parquet')\n",
+                                            "type": "Expression"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "name": "OnSuccess_UpdateLog",
+                            "type": "SqlServerStoredProcedure",
+                            "dependsOn": [
+                                {
+                                    "activity": "cpy_sycletable_to_parquet",
+                                    "dependencyConditions": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            ],
+                            "policy": {
+                                "timeout": "7.00:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "storedProcedureName": "[audit_mig].[spdtplUpdateStatus]",
+                                "storedProcedureParameters": {
+                                    "PipelineRunId": {
+                                        "value": {
+                                            "value": "@pipeline().RunId",
+                                            "type": "Expression"
+                                        },
+                                        "type": "String"
+                                    },
+                                    "ProcessFlag": {
+                                        "value": "SRC-TO-RAW",
+                                        "type": "String"
+                                    },
+                                    "ProcessName": {
+                                        "value": {
+                                            "value": "@item().SourceTable",
+                                            "type": "Expression"
+                                        },
+                                        "type": "String"
+                                    },
+                                    "ProcessSchemaName": {
+                                        "value": {
+                                            "value": "@item().SourceSchema",
+                                            "type": "Expression"
+                                        },
+                                        "type": "String"
+                                    },
+                                    "ProcessStatus": {
+                                        "value": "Success",
+                                        "type": "String"
+                                    }
+                                }
+                            },
+                            "linkedServiceName": {
+                                "referenceName": "defaultSQLdatabase",
+                                "type": "LinkedServiceReference"
+                            }
+                        },
+                        {
+                            "name": "OnError_UpdateLog",
+                            "type": "SqlServerStoredProcedure",
+                            "dependsOn": [
+                                {
+                                    "activity": "cpy_sycletable_to_parquet",
+                                    "dependencyConditions": [
+                                        "Failed"
+                                    ]
+                                }
+                            ],
+                            "policy": {
+                                "timeout": "7.00:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "storedProcedureName": "[audit_mig].[spdtplUpdateStatus]",
+                                "storedProcedureParameters": {
+                                    "PipelineRunId": {
+                                        "value": {
+                                            "value": "@pipeline().RunId",
+                                            "type": "Expression"
+                                        },
+                                        "type": "String"
+                                    },
+                                    "ProcessFlag": {
+                                        "value": "SRC-TO-RAW",
+                                        "type": "String"
+                                    },
+                                    "ProcessName": {
+                                        "value": {
+                                            "value": "@item().SourceTable",
+                                            "type": "Expression"
+                                        },
+                                        "type": "String"
+                                    },
+                                    "ProcessSchemaName": {
+                                        "value": {
+                                            "value": "@item().SourceSchema",
+                                            "type": "Expression"
+                                        },
+                                        "type": "String"
+                                    },
+                                    "ProcessStatus": {
+                                        "value": {
+                                            "value": "Failure",
+                                            "type": "Expression"
+                                        },
+                                        "type": "String"
+                                    }
+                                }
+                            },
+                            "linkedServiceName": {
+                                "referenceName": "defaultSQLdatabase",
+                                "type": "LinkedServiceReference"
+                            }
+                        },
+                        {
+                            "name": "Running_UpdateLog",
+                            "type": "SqlServerStoredProcedure",
+                            "dependsOn": [],
+                            "policy": {
+                                "timeout": "7.00:00:00",
+                                "retry": 0,
+                                "retryIntervalInSeconds": 30,
+                                "secureOutput": false,
+                                "secureInput": false
+                            },
+                            "userProperties": [],
+                            "typeProperties": {
+                                "storedProcedureName": "[audit_mig].[spdtplUpdateStatus]",
+                                "storedProcedureParameters": {
+                                    "PipelineRunId": {
+                                        "value": {
+                                            "value": "@pipeline().RunId",
+                                            "type": "Expression"
+                                        },
+                                        "type": "String"
+                                    },
+                                    "ProcessFlag": {
+                                        "value": "SRC-TO-RAW",
+                                        "type": "String"
+                                    },
+                                    "ProcessName": {
+                                        "value": {
+                                            "value": "@item().SourceTable",
+                                            "type": "Expression"
+                                        },
+                                        "type": "String"
+                                    },
+                                    "ProcessSchemaName": {
+                                        "value": {
+                                            "value": "@item().SourceSchema",
+                                            "type": "Expression"
+                                        },
+                                        "type": "String"
+                                    },
+                                    "ProcessStatus": {
+                                        "value": "Running",
+                                        "type": "String"
+                                    }
+                                }
+                            },
+                            "linkedServiceName": {
+                                "referenceName": "defaultSQLdatabase",
+                                "type": "LinkedServiceReference"
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "name": "Generate Log",
+                "type": "SqlServerStoredProcedure",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "storedProcedureName": "[audit_mig].[spdtplInsertStatus]",
+                    "storedProcedureParameters": {
+                        "AdfPipeLineRunid": {
+                            "value": {
+                                "value": "@pipeline().RunId",
+                                "type": "Expression"
+                            },
+                            "type": "String"
+                        },
+                        "DataFactoryName": {
+                            "value": {
+                                "value": "@pipeline().DataFactory",
+                                "type": "Expression"
+                            },
+                            "type": "String"
+                        },
+                        "ProcessName": {
+                            "value": {
+                                "value": "SRC-TO-RAW",
+                                "type": "Expression"
+                            },
+                            "type": "String"
+                        },
+                        "SiteCode": {
+                            "value": {
+                                "value": "@pipeline().parameters.SiteCode",
+                                "type": "Expression"
+                            },
+                            "type": "String"
+                        }
+                    }
+                },
+                "linkedServiceName": {
+                    "referenceName": "defaultSQLdatabase",
+                    "type": "LinkedServiceReference"
+                }
+            }
+        ],
+        "parameters": {
+            "SiteCode": {
+                "type": "string",
+                "defaultValue": "UK"
+            },
+            "env": {
+                "type": "string",
+                "defaultValue": "dev"
+            }
+        },
+        "variables": {
+            "SiteCode": {
+                "type": "String",
+                "defaultValue": "UK"
+            }
+        },
+        "folder": {
+            "name": "01-datamigration"
+        },
+        "annotations": []
+    }
+}

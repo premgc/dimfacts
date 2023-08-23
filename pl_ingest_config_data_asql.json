@@ -1,0 +1,119 @@
+{
+    "name": "pl_ingest_config_data_asql",
+    "properties": {
+        "activities": [
+            {
+                "name": "CPY-DATA-EXCEL-TO-ASQL",
+                "type": "Copy",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "7.00:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "source": {
+                        "type": "ExcelSource",
+                        "storeSettings": {
+                            "type": "AzureBlobFSReadSettings",
+                            "recursive": true,
+                            "enablePartitionDiscovery": false
+                        }
+                    },
+                    "sink": {
+                        "type": "AzureSqlSink",
+                        "preCopyScript": {
+                            "value": "TRUNCATE TABLE @{concat(pipeline().parameters.p_schname,'.', pipeline().parameters.p_tblname)}",
+                            "type": "Expression"
+                        },
+                        "writeBehavior": "insert",
+                        "sqlWriterUseTableLock": false,
+                        "disableMetricsCollection": false
+                    },
+                    "enableStaging": false,
+                    "translator": {
+                        "type": "TabularTranslator",
+                        "typeConversion": true,
+                        "typeConversionSettings": {
+                            "allowDataTruncation": true,
+                            "treatBooleanAsNumber": false
+                        }
+                    }
+                },
+                "inputs": [
+                    {
+                        "referenceName": "ds_excel_gen_sycle_dm_read",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "p_container": {
+                                "value": "@pipeline().parameters.p_container",
+                                "type": "Expression"
+                            },
+                            "p_folder": {
+                                "value": "@pipeline().parameters.p_folder",
+                                "type": "Expression"
+                            },
+                            "p_filename": {
+                                "value": "@pipeline().parameters.p_filename",
+                                "type": "Expression"
+                            },
+                            "p_sheet": {
+                                "value": "@pipeline().parameters.p_sheet",
+                                "type": "Expression"
+                            }
+                        }
+                    }
+                ],
+                "outputs": [
+                    {
+                        "referenceName": "ds_asql_gen_sycle_dm_config",
+                        "type": "DatasetReference",
+                        "parameters": {
+                            "p_schname": {
+                                "value": "@pipeline().parameters.p_schname",
+                                "type": "Expression"
+                            },
+                            "p_tblname": {
+                                "value": "@pipeline().parameters.p_tblname",
+                                "type": "Expression"
+                            }
+                        }
+                    }
+                ]
+            }
+        ],
+        "parameters": {
+            "p_schname": {
+                "type": "string",
+                "defaultValue": "audit_mig"
+            },
+            "p_tblname": {
+                "type": "string",
+                "defaultValue": "DataIngestionProcessDetails"
+            },
+            "p_container": {
+                "type": "string",
+                "defaultValue": "migration"
+            },
+            "p_folder": {
+                "type": "string",
+                "defaultValue": "/common/config/00_config/"
+            },
+            "p_filename": {
+                "type": "string",
+                "defaultValue": "config_data.xlsx"
+            },
+            "p_sheet": {
+                "type": "string",
+                "defaultValue": "Parent"
+            }
+        },
+        "folder": {
+            "name": "01-datamigration/utility/config"
+        },
+        "annotations": []
+    }
+}

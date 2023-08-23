@@ -1,0 +1,35 @@
+{
+    "name": "ds_asql_gen_sycle_dm_config",
+    "properties": {
+        "linkedServiceName": {
+            "referenceName": "defaultSQLdatabase",
+            "type": "LinkedServiceReference"
+        },
+        "parameters": {
+            "p_schname": {
+                "type": "string",
+                "defaultValue": "audit_mig"
+            },
+            "p_tblname": {
+                "type": "string",
+                "defaultValue": "adf-datapipeline-config"
+            }
+        },
+        "folder": {
+            "name": "01 - datamigration"
+        },
+        "annotations": [],
+        "type": "AzureSqlTable",
+        "schema": [],
+        "typeProperties": {
+            "schema": {
+                "value": "@dataset().p_schname",
+                "type": "Expression"
+            },
+            "table": {
+                "value": "@dataset().p_tblname",
+                "type": "Expression"
+            }
+        }
+    }
+}
